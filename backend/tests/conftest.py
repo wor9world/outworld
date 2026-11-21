@@ -40,10 +40,12 @@ def client() -> Iterator[object]:
 
 
 @pytest.fixture(autouse=True)
-def _clean_db(client) -> Iterator[None]:
-    """Every test starts from an empty database (triggers keep FTS in sync)."""
+def _clean_db(client, _env) -> Iterator[None]:
+    """Every test starts from an empty database and an empty workspace."""
     yield
-    from app import db
+    import shutil
+
+    from app import config, db
 
     conn = db.connect()
     try:
@@ -65,6 +67,11 @@ def _clean_db(client) -> Iterator[None]:
         conn.commit()
     finally:
         conn.close()
+
+    workspace = config.workspace_root()
+    if workspace.exists():
+        shutil.rmtree(workspace, ignore_errors=True)
+    workspace.mkdir(parents=True, exist_ok=True)
 
 
 @pytest.fixture()

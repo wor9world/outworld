@@ -44,8 +44,10 @@ TOL = 1e-6
 
 
 def parse(expr: str, var: sp.Symbol) -> Any:
+    """Parse with ``^`` treated as exponent (sympy would read it as XOR)."""
     local = {**NAMESPACE, str(var): var}
-    return parse_expr(expr, local_dict=local, transformations=TRANSFORMS)
+    text = expr.replace("^", "**")
+    return parse_expr(text, local_dict=local, transformations=TRANSFORMS)
 
 
 def _num(value: Any) -> float | None:
@@ -117,8 +119,11 @@ def evaluate(expr: str) -> dict[str, Any]:
 
 def solve_equation(expr: str, var_name: str = "x") -> dict[str, Any]:
     var = sp.Symbol(var_name)
-    parsed = parse(expr, var)
-    equation = parsed if isinstance(parsed, sp.Eq) else sp.Eq(parsed, 0)
+    if "=" in expr:
+        lhs, rhs = expr.split("=", 1)
+        equation = sp.Eq(parse(lhs, var), parse(rhs, var))
+    else:
+        equation = sp.Eq(parse(expr, var), 0)
     residual = sp.simplify(equation.lhs - equation.rhs)
 
     exact_roots: list[Any] = []
