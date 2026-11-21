@@ -14,7 +14,7 @@ from typing import Any
 
 from tools import registry
 
-from . import config, llm, sandbox
+from . import config, llm, sandbox, toolcall
 from .api.tools import audit
 
 Event = tuple[str, dict[str, Any]]
@@ -144,7 +144,7 @@ def execute_tool(
     started = time.perf_counter()
 
     def invoke(**extra: Any) -> dict[str, Any]:
-        return registry.get_tool(registry.resolve(tool))(**{**args, **extra})
+        return toolcall.invoke(tool, args, **extra)
 
     result = invoke()
     if result.get("error") == "approval_required":

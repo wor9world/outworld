@@ -25,6 +25,8 @@ CASES = [
     ("ตรวจโปรเจค hello", "project_verify", "project"),
     ("ข่าวเอไอล่าสุด", "news", "search"),
     ("ค้นหา sympy docs", "search", "search"),
+    ("ดูดวง 1992-08-08 16:49 ยะลา", "astro", "astro"),
+    ("ค้นโน้ต sympy", "note_search", "search"),
 ]
 
 
@@ -90,20 +92,64 @@ def test_unmatched_message(client) -> None:
 
 def test_rules_endpoint(client) -> None:
     body = client.get("/api/pipe/rules").json()
-    assert body["counts"]["intents"] == 7
-    assert body["counts"]["plans"] == 7
+    assert body["counts"]["intents"] == 9
+    assert body["counts"]["plans"] == 9
     assert {row["intent"] for row in body["plans"]} == {
-        "math_calc", "math_solve", "plan", "project_create",
-        "project_verify", "news", "search",
+        "math_calc",
+        "math_solve",
+        "astro",
+        "plan",
+        "project_create",
+        "project_verify",
+        "news",
+        "note_search",
+        "search",
     }
 
 
 def test_reload(client) -> None:
     body = client.post("/api/pipe/reload").json()
-    assert body == {"intents": 7, "plans": 7}
+    assert body == {"intents": 9, "plans": 9}
 
 
 def test_dispatch_is_audited(client) -> None:
     run_pipe(client, "9.8-9.11=?")
     calls = client.get("/api/calls").json()
     assert any(row["tool"] == "calc" for row in calls)
+
+
+def test_astro_route_and_answer(client) -> None:
+    body = run_pipe(client, "ดูดวง 1992-08-08 16:49 ยะลา")
+    assert body["intent"] == "astro"
+    assert body["error"] is None, body
+    answer = body["answer"]
+    assert "Sun" in answer
+    assert "Asc" in answer
+    assert "BaZi" in answer
+    assert "1992-08-08 16:49" in answer
+    chart = body["results"][0]["result"]["data"]
+    assert abs(chart["western"]["planets"]["Sun"]["lon"] - 136.0926) < 1e-6
+
+
+def test_astro_thai_buddhist_date(client) -> None:
+    body = run_pipe(client, "17/08/2538 14:30 กรุงเทพ")
+    assert body["intent"] == "astro"
+    chart = body["results"][0]["result"]["data"]
+    assert chart["input_resolved"]["local_time"].startswith("1995-08-17T14:30")
+    assert body["answer"].startswith("1995-08-17 14:30")
+
+
+def test_astro_trigger_without_date_is_not_routed(client) -> None:
+    assert route(client, "ดูดวงให้หน่อย")["intent"] is None
+
+
+def test_bare_date_is_not_math(client) -> None:
+    assert route(client, "2026-12-01")["intent"] is None
+
+
+def test_note_search_scopes_to_knowledge(client) -> None:
+    client.post("/api/knowledge", json={"title": "sympy", "body": "parse_expr notes"})
+    body = run_pipe(client, "ค้นโน้ต sympy")
+    assert body["intent"] == "note_search"
+    assert body["results"][0]["args"]["scope"] == "knowledge"
+    assert body["results"][0]["result"]["ok"] is True

@@ -1,11 +1,12 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import ChatView from '#lib/components/ChatView.svelte';
 	import Composer from '#lib/components/Composer.svelte';
 	import ApprovalModal from '#lib/components/ApprovalModal.svelte';
 	import RouteChip from '#lib/components/RouteChip.svelte';
 	import StepLog from '#lib/components/StepLog.svelte';
-	import { get, post, ApiError } from '#lib/api.ts';
+	import { del, get, post, ApiError } from '#lib/api.ts';
 	import { streamChat } from '#lib/stream.ts';
 	import type { ApprovalRequest, Message, RouteDecision, ToolCall } from '#lib/types.ts';
 
@@ -140,6 +141,16 @@
 			error = caught instanceof Error ? caught.message : 'approval failed';
 		}
 	}
+
+	async function removeChat(): Promise<void> {
+		if (!id || !window.confirm('ลบแชทนี้?')) return;
+		try {
+			await del(`/chats/${id}`);
+			await goto('/');
+		} catch (caught) {
+			error = caught instanceof Error ? caught.message : 'delete failed';
+		}
+	}
 </script>
 
 <div class="flex h-full flex-col">
@@ -148,6 +159,13 @@
 		{#if route}
 			<RouteChip {route} />
 		{/if}
+		<button
+			type="button"
+			onclick={removeChat}
+			class="ml-auto rounded px-2 text-[11px] text-neutral-400 hover:text-red-600"
+		>
+			ลบแชท
+		</button>
 	</header>
 
 	{#if error}

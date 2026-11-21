@@ -119,7 +119,45 @@ def test_stats_shape(client) -> None:
     stats = client.get("/api/learning/stats").json()
     assert stats["runs_total"] == 1
     assert stats["pipe_rate"] == 1.0
-    assert 0 <= stats["ok_rate"] <= 1
+    assert stats["ok_rate"] == 1.0
+    assert stats["unrouted"] == 0
+
+
+def test_unrouted_turn_does_not_flatter_ok_rate(client) -> None:
+    _, chat_id = seed(client)
+    client.post(f"/api/chat/{chat_id}", json={"content": "สวัสดี"})
+    stats = client.get("/api/learning/stats").json()
+    assert stats["runs_total"] == 1
+    assert stats["unrouted"] == 1
+    assert stats["ok_rate"] == 0.0
+
+
+def test_ok_rate_ignores_unrouted_turns(client) -> None:
+    _, chat_id = seed(client)
+    client.post(f"/api/chat/{chat_id}", json={"content": "สวัสดี"})
+    client.post(f"/api/chat/{chat_id}", json={"content": "9.8-9.11=?"})
+    stats = client.get("/api/learning/stats").json()
+    assert stats["runs_total"] == 2
+    assert stats["unrouted"] == 1
+    assert stats["ok_rate"] == 1.0
+
+
+def test_recalls_24h_counts_recent_only(client) -> None:
+    from datetime import UTC, datetime, timedelta
+
+    from app import learning
+
+    _, chat_id = seed(client)
+    client.post(f"/api/chat/{chat_id}", json={"content": "สร้างโปรเจค recent"})
+    conn = db.connect()
+    try:
+        assert learning.stats(conn)["recalls_24h"] == 1
+        old = (datetime.now(UTC) - timedelta(hours=30)).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+        conn.execute("UPDATE patterns SET last_used_at = ?", (old,))
+        conn.commit()
+        assert learning.stats(conn)["recalls_24h"] == 0
+    finally:
+        conn.close()
 
 
 def test_hints_text_is_bounded(client) -> None:

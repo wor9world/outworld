@@ -16,16 +16,16 @@ import yaml
 
 from tools import registry
 
-from . import config
+from . import config, toolcall
 from .api.tools import audit
 
 TRIGGERS = re.compile(
-    r"(?i)^\s*(ช่วยวางแผน|วางแผน|plan|ค้นหา|หา|search|find|"
+    r"(?i)^\s*(ช่วยวางแผน|วางแผน|plan|ค้นโน้ต|โน้ต|note|ค้นหา|หา|search|find|"
     r"สร้างโปรเจ[คก](?:ต์)?|new project|scaffold|"
     r"ตรวจโปรเจ[คก](?:ต์)?|verify project|test project)\s*"
 )
 
-CONDITIONS = ("regex", "contains", "startswith", "equals")
+CONDITIONS = ("regex", "not_regex", "contains", "startswith", "equals")
 TRANSFORMS = (
     "keep",
     "strip_prefix",
@@ -33,7 +33,15 @@ TRANSFORMS = (
     "strip_eq_question",
     "extract_name",
     "extract_template",
+    "extract_date",
+    "extract_time",
+    "extract_location",
 )
+
+DATE_RE = re.compile(
+    r"(\d{4}-\d{2}-\d{2}|\d{1,2}/\d{1,2}/\d{4}|\d{1,2}-\d{1,2}-\d{4})"
+)
+TIME_RE = re.compile(r"\b(\d{1,2}:\d{2}(?::\d{2})?)\b")
 
 
 @dataclass
@@ -159,6 +167,11 @@ def _match_condition(condition: dict[str, str], message: str) -> bool:
             return re.search(condition["regex"], message) is not None
         except re.error:
             return False
+    if "not_regex" in condition:
+        try:
+            return re.search(condition["not_regex"], message) is None
+        except re.error:
+            return False
     if "contains" in condition:
         return condition["contains"].casefold() in message.casefold()
     if "startswith" in condition:
@@ -185,6 +198,21 @@ def _transform(name: str, message: str, default: str | None = None) -> str:
             if candidate in lowered:
                 return candidate
         return default or "python"
+    if name == "extract_date":
+        found = DATE_RE.search(message)
+        return found.group(1) if found else ""
+    if name == "extract_time":
+        found = TIME_RE.search(message)
+        return found.group(1) if found else "12:00"
+    if name == "extract_location":
+        clock = TIME_RE.search(message)
+        if clock is not None:
+            rest = message[clock.end() :]
+        else:
+            date = DATE_RE.search(message)
+            rest = message[date.end() :] if date is not None else TRIGGERS.sub("", message, count=1)
+        rest = rest.strip(" ,;-·|")
+        return rest or "Bangkok"
     return message
 
 
@@ -257,6 +285,29 @@ def fill(value: Any, slots: dict[str, Any]) -> Any:
     return value
 
 
+def _astro_summary(data: dict[str, Any]) -> str:
+    """One readable line for the four-system chart, used by the pipe answer template."""
+    resolved = data.get("input_resolved") or {}
+    western = data.get("western") or {}
+    planets = western.get("planets") or {}
+    ascendant = western.get("ascendant") or {}
+    day = ((data.get("bazi") or {}).get("pillars") or {}).get("day") or {}
+
+    parts: list[str] = []
+    local = str(resolved.get("local_time") or "")
+    if local:
+        parts.append(local.replace("T", " ")[:16])
+    for body in ("Sun", "Moon"):
+        planet = planets.get(body)
+        if planet:
+            parts.append(f"{body} {planet.get('degree')} {planet.get('sign')}")
+    if ascendant.get("degree"):
+        parts.append(f"Asc {ascendant.get('degree')} {ascendant.get('sign')}")
+    if day.get("chinese"):
+        parts.append(f"BaZi {day['chinese']}")
+    return " · ".join(parts)
+
+
 def _context(results: list[dict[str, Any]]) -> dict[str, str]:
     ctx: dict[str, str] = {}
     for step in results:
@@ -279,6 +330,10 @@ def _context(results: list[dict[str, Any]]) -> dict[str, str]:
             ctx["hits"] = f"{len(data['hits'])} hits"
         if "steps" in data and isinstance(data["steps"], list):
             ctx["steps"] = "; ".join(str(item.get("title", "?")) for item in data["steps"])
+        if "western" in data and "input_resolved" in data:
+            summary = _astro_summary(data)
+            if summary:
+                ctx["summary"] = summary
     return ctx
 
 
@@ -318,7 +373,7 @@ def run(
         args = fill(step.get("args") or {}, slots)
         started = time.perf_counter()
         try:
-            result = registry.get_tool(registry.resolve(tool_id))(**args)
+            result = toolcall.invoke(tool_id, args)
         except TypeError as exc:
             result = {"ok": False, "data": None, "meta": {}, "error": f"bad_args:{exc}"}
         elapsed = int((time.perf_counter() - started) * 1000)

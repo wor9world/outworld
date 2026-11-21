@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { get, post } from '#lib/api.ts';
+	import { del, get, post } from '#lib/api.ts';
 	import type { Project } from '#lib/types.ts';
 
 	let projects = $state<Project[]>([]);
@@ -17,6 +17,16 @@
 	$effect(() => {
 		void load();
 	});
+
+	async function remove(project: Project): Promise<void> {
+		if (!window.confirm(`ลบ "${project.name}" และแชททั้งหมดในโปรเจกต์นี้?`)) return;
+		try {
+			await del(`/projects/${project.id}`);
+			await load();
+		} catch (error) {
+			failure = error instanceof Error ? error.message : 'delete failed';
+		}
+	}
 
 	async function create(): Promise<void> {
 		if (!name.trim()) return;
@@ -54,11 +64,19 @@
 
 	<ul class="mt-4 divide-y divide-neutral-200 rounded-xl border border-neutral-200 bg-white dark:divide-neutral-800 dark:border-neutral-800 dark:bg-neutral-950">
 		{#each projects as project (project.id)}
-			<li>
-				<a href={`/projects/${project.id}`} class="flex items-center justify-between px-3 py-2.5 hover:bg-neutral-50 dark:hover:bg-neutral-900">
+			<li class="flex items-center gap-2 px-3 py-2.5 hover:bg-neutral-50 dark:hover:bg-neutral-900">
+				<a href={`/projects/${project.id}`} class="flex flex-1 items-center justify-between">
 					<span class="text-sm">{project.name}</span>
 					<span class="text-[11px] text-neutral-400">{project.chat_count ?? 0} chats · {project.root_path}</span>
 				</a>
+				<button
+					type="button"
+					aria-label={`Delete ${project.name}`}
+					onclick={() => remove(project)}
+					class="rounded px-1 text-[11px] text-neutral-400 hover:text-red-600"
+				>
+					ลบ
+				</button>
 			</li>
 		{:else}
 			<li class="px-3 py-6 text-center text-xs text-neutral-400">ยังไม่มีโปรเจกต์</li>

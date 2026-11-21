@@ -77,6 +77,18 @@ Every line is observable. The id is used by `PLAN.md`.
 - [ ] **A25** Patterns never execute on their own; setting `enabled = 0` removes a pattern from the
       very next recall.
 
+### Hardening (v3)
+
+- [ ] **A35** `ok_rate` counts only turns that actually ran; an unrouted turn increments `unrouted` and
+      leaves the rate at 0; `recalls_24h` counts patterns used in the last 24 hours only.
+- [ ] **A36** `ดูดวง 1992-08-08 16:49 ยะลา` routes to `astro` and the answer shows Sun, Asc and the
+      BaZi day pillar — the chart is reachable from chat, not only from the tool bench.
+- [ ] **A37** `17/08/2538 14:30 กรุงเทพ` resolves to 1995-08-17, and `2026-12-01` alone is not routed
+      (a bare date must never be evaluated as `2026-12-1`).
+- [ ] **A38** `ค้นโน้ต …` searches knowledge; `ค้นหา …` still searches the web.
+- [ ] **A39** A project and a chat can be deleted from the UI, and a command with parameters asks for
+      them instead of running with an empty object.
+
 ## Users
 
 One person (the owner) on this Windows machine, browser on the same machine. No accounts, no remote

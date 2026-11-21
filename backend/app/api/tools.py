@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse
 
 from tools import registry
 
-from .. import config, db, locations, sandbox
+from .. import config, db, sandbox, toolcall
 
 router = APIRouter()
 
@@ -115,18 +115,11 @@ async def run_tool(
     if approval_token:
         body["approval_token"] = approval_token
 
-    # astro.py is a copy and its built-in location table is not complete; fill the
-    # coordinates here instead of editing the tool.
-    if tool == "astro" and not body.get("lat") and body.get("location"):
-        found = locations.resolve(str(body["location"]))
-        if found is not None:
-            body["lat"], body["lon"] = found[0], found[1]
-            if not body.get("tz_name"):
-                body["tz_name"] = found[2]
-
+    # astro.py is a copy and its built-in location table is not complete; toolcall.prepare
+    # fills the coordinates so the bridge also works from the pipe and the agent.
     started = time.perf_counter()
     try:
-        result = registry.get_tool(registry.resolve(tool))(**body)
+        result = toolcall.invoke(tool, body)
     except TypeError as exc:
         elapsed = int((time.perf_counter() - started) * 1000)
         result = {"ok": False, "data": None, "meta": {}, "error": f"bad_args:{exc}"}

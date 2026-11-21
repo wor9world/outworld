@@ -57,3 +57,44 @@ health                         -> 11 tools, llm disabled
    the prebuilt wheel.
 6. **Thai text and PowerShell**: `Get-Content | Set-Content` corrupted Thai regexes once. All writes
    now go through the UTF-8-safe tooling; an encoding sweep reported zero damaged files.
+
+---
+
+# v3 (PLAN-v3.md)
+
+Triggered by an audit of the running app, not by a wish list.
+
+| Task | Status | Evidence |
+|---|---|---|
+| V1 honest stats | done | `13 passed` in `test_learning.py`; unrouted turn → `ok_rate 0.0`, `unrouted 1`; `recalls_24h` ignores a 30 h old pattern |
+| V2 astro in the pipe | done | `24 passed` in `test_pipe.py`; live: `ดูดวง 1992-08-08 16:49 ยะลา → Sun 16°05'33" Leo · Moon 20°45'06" Sagittarius · Asc 21°20'22" Capricorn · BaZi 丙辰` |
+| V3 knowledge intent | done | `ค้นโน้ต …` → `note_search` with `scope: knowledge`; `ค้นหา …` still web |
+| V4 UI gaps | done | project delete, chat delete, command parameter prompt; `0 ERRORS 0 WARNINGS` |
+| V5 docs | done | SPEC §14.2/§14.3/§5.10 + A35–A39 in the brief |
+| V6 Brave adapter | **blocked** | needs `references/websearch.md`; `search(scope="web")` stays explicit |
+
+New measured behaviour:
+
+```
+ดูดวง 1992-08-08 16:49 ยะลา  -> astro        | Sun 16°05'33" Leo · Moon 20°45'06" Sagittarius · Asc 21°20'22" Capricorn · BaZi 丙辰
+17/08/2538 14:30 กรุงเทพ     -> astro        | 1995-08-17 14:30 · Sun 23°56'25" Leo · Asc 22°49'06" Sagittarius
+2026-12-01                   -> no_route     (a bare date is never evaluated as subtraction)
+ค้นโน้ต sympy                -> note_search  (scope=knowledge)
+```
+
+Final gate after v3:
+
+```
+backend  uv run pytest -q      -> 152 passed
+backend  uv run ruff check .   -> All checks passed
+frontend bun run check         -> 0 ERRORS 0 WARNINGS (378 files)
+frontend bun run build         -> built in 486ms, adapter-bun done
+```
+
+New deviations found during v3:
+
+7. **`astro.py` cannot resolve every Thai province by itself** and its built-in table is smaller than
+   the one we ship. The bridge now lives in `app/toolcall.py` and is used by the API, the pipe and the
+   agent, so all three resolve `ยะลา` the same way instead of only the HTTP path.
+8. **A bare date used to route to `math_calc`** (`2026-12-01` → `2026-12-1`). Fixed with a
+   `not_regex` condition rather than a special case in code.

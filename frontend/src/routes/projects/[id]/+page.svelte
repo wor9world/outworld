@@ -55,10 +55,16 @@
 		await load();
 	}
 
-	async function runCommand(commandId: string): Promise<void> {
+	async function runCommand(command: { id: string; params: string[] }): Promise<void> {
+		const params: Record<string, string> = {};
+		for (const key of command.params) {
+			const value = window.prompt(`ค่า ${key}`, '');
+			if (value === null) return;
+			params[key] = value;
+		}
 		try {
-			const result = await post<{ data?: { stdout?: string } }>(`/commands/${commandId}/run`, {
-				params: {}
+			const result = await post<{ data?: { stdout?: string } }>(`/commands/${command.id}/run`, {
+				params
 			});
 			failure = result.data?.stdout?.trim() || 'ok';
 		} catch (error) {
@@ -131,7 +137,7 @@
 					<li class="flex items-center gap-2 rounded-lg border border-neutral-200 px-2 py-1.5 dark:border-neutral-800">
 						<span class="text-xs font-medium">{command.name}</span>
 						<code class="truncate font-mono text-[11px] text-neutral-500">{command.template}</code>
-						<button type="button" onclick={() => runCommand(command.id)} class="ml-auto text-[11px] underline">run</button>
+						<button type="button" onclick={() => runCommand(command)} class="ml-auto text-[11px] underline">run</button>
 						<button type="button" onclick={() => remove(command.id)} class="text-[11px] text-red-600">ลบ</button>
 					</li>
 				{:else}

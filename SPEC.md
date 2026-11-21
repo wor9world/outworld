@@ -521,7 +521,7 @@ plan and never calls a model. No match and no provider → `warnings:["no_route"
 | 43 | PATCH | `/patterns/{id}` | `{name?,enabled?}` | `200` pattern |
 | 44 | DELETE | `/patterns/{id}` | — | `204` |
 | 45 | POST | `/patterns/{id}/promote` | `{project_id}` | `200 {instructions}` |
-| 46 | GET | `/learning/stats` | — | `{runs_total,ok_rate,pipe_rate,patterns_total,top_patterns[3],recalls_24h}` |
+| 46 | GET | `/learning/stats` | — | `{runs_total,ok_rate,pipe_rate,patterns_total,top_patterns[3],recalls_24h,unrouted}` |
 
 Rules: a disabled pattern is excluded from recall on the next turn (no cache to invalidate);
 `promote` appends one bullet to `projects.instructions` and returns the new text, so the change is
@@ -855,6 +855,11 @@ Leaving `/chat/[id]` aborts the stream through the `$effect` cleanup controller.
 | A32 | §14.2 — `ค้นหา …` routes to `search` and returns hits |
 | A33 | §14.5 — an unmatched message with no provider returns `warnings:["no_route"]`, no traceback |
 | A34 | §5.9 #34 — `/pipe/route` writes no `tool_calls` row and executes nothing |
+| A35 | §5.10 #46 — `ok_rate` counts only turns that actually ran; an unrouted turn increments `unrouted` and leaves the rate at 0; `recalls_24h` counts only patterns used in the last 24 h |
+| A36 | §14.2 — `ดูดวง 1992-08-08 16:49 ยะลา` routes to `astro` and the answer carries Sun, Asc and the BaZi day pillar |
+| A37 | §14.2 — `17/08/2538 14:30 กรุงเทพ` resolves to 1995-08-17; `2026-12-01` alone is not routed and is never evaluated as subtraction |
+| A38 | §14.2 — `ค้นโน้ต …` routes to `note_search` with `scope: knowledge`, while `ค้นหา …` keeps going to the web |
+| A39 | §9.5 — a project and a chat can be deleted from the UI, and a command with parameters prompts for them |
 
 ---
 
@@ -1039,10 +1044,10 @@ rules:
 ```
 
 **Rule schema (closed set).** `id`, `intent`, `priority` (int), `when.all[]`, `when.any[]`,
-`slots{}`. A condition is exactly one of `regex`, `contains`, `startswith`, `equals`. A rule with
-neither `all` nor `any` is a config error and is rejected at load with the rule id in the message.
-A slot transform is one of `keep`, `strip_prefix`, `strip_question`, `strip_eq_question`,
-`extract_name`, `extract_template`.
+`slots{}`. A condition is exactly one of `regex`, `not_regex`, `contains`, `startswith`, `equals`.
+A rule with neither `all` nor `any` is a config error and is rejected at load with the rule id in the
+message. A slot transform is one of `keep`, `strip_prefix`, `strip_question`, `strip_eq_question`,
+`extract_name`, `extract_template`, `extract_date`, `extract_time`, `extract_location`.
 
 **Transforms (deterministic, regex only):**
 
@@ -1054,6 +1059,14 @@ A slot transform is one of `keep`, `strip_prefix`, `strip_question`, `strip_eq_q
 | `strip_eq_question` | removes a trailing `=` and `?`, leaving the expression |
 | `extract_name` | first token that starts with a letter after the trigger, quoted or bare |
 | `extract_template` | `python` \| `static` \| `svelte` when named, else the `default` |
+| `extract_date` | first `YYYY-MM-DD`, `DD/MM/YYYY` or `DD-MM-YYYY`; empty when absent |
+| `extract_time` | first `H:MM` / `HH:MM:SS`; `12:00` when absent |
+| `extract_location` | the text after the clock time (else after the date), trimmed; `Bangkok` when empty |
+
+**Astro rule (priority 110).** Requires a date **and** (a chart trigger `ดูดวง|ดวง|astro|chart`
+or a clock time), so `2026-12-01` alone stays unrouted while `ดูดวง 1992-08-08 16:49 ยะลา` routes.
+`math_calc` carries `not_regex: '^\s*\d{1,4}[-/]\d{1,2}[-/]\d{1,4}\s*$'` so a bare date is never
+evaluated as subtraction.
 
 ### 14.3 `data/plan_cheat.yaml`
 
@@ -1071,6 +1084,21 @@ plans:
       - tool: calc
         args: { op: solve, expr: "{{expr}}", var: x }
     answer: "x = {{roots}}"
+
+  astro:
+    steps:
+      - tool: astro
+        args:
+          birth_date: "{{birth_date}}"
+          birth_time: "{{birth_time}}"
+          location: "{{location}}"
+    answer: "{{summary}}"
+
+  note_search:
+    steps:
+      - tool: search
+        args: { scope: knowledge, q: "{{query}}", limit: 8 }
+    answer: "{{hits}}"
 
   plan:
     steps:

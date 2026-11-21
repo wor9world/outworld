@@ -175,23 +175,38 @@ def promote(conn: sqlite3.Connection, pattern_id: str, project_id: str) -> str:
 
 
 def stats(conn: sqlite3.Connection) -> dict[str, Any]:
+    from datetime import UTC, datetime, timedelta
+
     runs = conn.execute("SELECT COUNT(*) FROM runs").fetchone()[0]
-    ok = conn.execute("SELECT COUNT(*) FROM runs WHERE status = 'ok'").fetchone()[0]
     pipe_runs = conn.execute(
         "SELECT COUNT(*) FROM runs WHERE intent_source = 'pipe'"
+    ).fetchone()[0]
+    # A turn with no route answered nothing; counting it as ok would flatter the rate.
+    answered = conn.execute(
+        "SELECT COUNT(*) FROM runs WHERE intent_source <> 'none' OR tool_count > 0"
+    ).fetchone()[0]
+    ok = conn.execute(
+        "SELECT COUNT(*) FROM runs WHERE status = 'ok'"
+        " AND (intent_source <> 'none' OR tool_count > 0)"
+    ).fetchone()[0]
+    unrouted = conn.execute(
+        "SELECT COUNT(*) FROM runs WHERE intent_source = 'none' AND tool_count = 0"
     ).fetchone()[0]
     patterns = conn.execute("SELECT COUNT(*) FROM patterns").fetchone()[0]
     top = conn.execute(
         "SELECT name, uses, success FROM patterns ORDER BY success DESC, uses DESC LIMIT 3"
     ).fetchall()
+    threshold = (datetime.now(UTC) - timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%S.000Z")
     recalls = conn.execute(
-        "SELECT COALESCE(SUM(uses), 0) FROM patterns WHERE last_used_at IS NOT NULL"
+        "SELECT COUNT(*) FROM patterns WHERE last_used_at IS NOT NULL AND last_used_at >= ?",
+        (threshold,),
     ).fetchone()[0]
     return {
         "runs_total": runs,
-        "ok_rate": round(ok / runs, 3) if runs else 0.0,
+        "ok_rate": round(ok / answered, 3) if answered else 0.0,
         "pipe_rate": round(pipe_runs / runs, 3) if runs else 0.0,
         "patterns_total": patterns,
         "top_patterns": [dict(row) for row in top],
         "recalls_24h": int(recalls),
+        "unrouted": int(unrouted),
     }
