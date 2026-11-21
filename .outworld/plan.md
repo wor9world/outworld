@@ -98,3 +98,30 @@ New deviations found during v3:
    agent, so all three resolve `ยะลา` the same way instead of only the HTTP path.
 8. **A bare date used to route to `math_calc`** (`2026-12-01` → `2026-12-1`). Fixed with a
    `not_regex` condition rather than a special case in code.
+
+---
+
+# v4 — script tools + one command
+
+| Item | Status | Evidence |
+|---|---|---|
+| `script` tool (write/read/list/delete/run/seed) | done | `test_scripts.py` 12 passed |
+| 7 starter scripts | done | `test_seed_scripts.py` 12 passed; every one runs |
+| Agent exposure `script__<name>` | done | catalogue test asserts the function exists |
+| Pipe `script_run` | done | `รันสคริปต์ tree` routes to `script` |
+| Scripts panel in Tools | done | `0 ERRORS 0 WARNINGS` |
+| `dev.cmd` / `verify.cmd` / `stop.cmd` | done | `verify.cmd` printed `ALL CHECKS PASSED` |
+
+Starter scripts: `tree`, `project_report`, `todo_scan`, `db_stats`, `daily_note`, `csv_summary`,
+`astro_text` — stdlib only, asserted by a test.
+
+Leftovers found while checking:
+
+9. **`.gitignore` hid `backend/data/`.** The pattern `data/` matched at any depth, so the four `.se1`
+   ephemeris files and every seed script were never committed. Patterns are now anchored (`/data/`,
+   `/workspace/`); 18 files under `backend/data` are tracked.
+10. **The smoke database was polluted** with five throwaway projects. `data/outworld.db` was deleted;
+    it is recreated on the next start.
+11. Nothing is listening on 8000/5173, and no `uvicorn`/`vite` process is left behind.
+
+Still blocked: **Brave web search** (needs `references/websearch.md`).
