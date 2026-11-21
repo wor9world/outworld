@@ -1,0 +1,14 @@
+data/
+workspace/
+backend/.venv/
+backend/.pytest-cache/
+backend/.pytest-tmp/
+backend/__pycache__/
+**/__pycache__/
+*.pyc
+frontend/node_modules/
+frontend/.svelte-kit/
+frontend/build/
+frontend/dist/
+.DS_Store
+*.log
