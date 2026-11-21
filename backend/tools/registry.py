@@ -38,3 +38,19 @@ def get_tool(name: str) -> ToolFunc:
 def list_tools() -> dict[str, str]:
     """Map every registered tool name to its description."""
     return {name: getattr(fn, "tool_description", "") for name, fn in _TOOLS.items()}
+
+
+# The copied astro module registers itself as ``astro_all``; the public tool id is
+# ``astro`` (SPEC §7). Every other tool's id equals its registered name.
+ALIASES = {"astro_all": "astro"}
+REVERSE_ALIASES = {public: registered for registered, public in ALIASES.items()}
+
+
+def public_tools() -> dict[str, str]:
+    """Map the public tool id to its description."""
+    return {ALIASES.get(name, name): description for name, description in list_tools().items()}
+
+
+def resolve(name: str) -> str:
+    """Translate a public tool id to the registered name."""
+    return REVERSE_ALIASES.get(name, name)

@@ -29,7 +29,7 @@ def health() -> dict[str, object]:
         "status": "ok",
         "python": platform.python_version(),
         "version": VERSION,
-        "tools": sorted(registry.list_tools()),
+        "tools": sorted(registry.public_tools()),
         "llm": "enabled" if llm else "disabled",
         "db": str(config.db_path()),
         "schema": int(schema),
