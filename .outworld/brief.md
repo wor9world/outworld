@@ -89,6 +89,18 @@ Every line is observable. The id is used by `PLAN.md`.
 - [ ] **A39** A project and a chat can be deleted from the UI, and a command with parameters asks for
       them instead of running with an empty object.
 
+### Script tools (v4)
+
+- [ ] **A40** `script` is a first-class tool: `write` stores source + manifest under
+      `workspace/scripts/`, `run` passes declared params as argv, a missing param is a clear error, and
+      the timeout kills a long script.
+- [ ] **A41** Every script shows up in the agent tool catalogue as `script__<name>` with one property
+      per param, and calling it runs the script.
+- [ ] **A42** `op:"seed"` installs the starter set (`tree`, `project_report`, `todo_scan`, `db_stats`,
+      `daily_note`, `csv_summary`, `astro_text`) exactly once and never overwrites an edited script.
+- [ ] **A43** `รันสคริปต์ tree` routes through the pipe to `script_run` and the answer is the script's
+      stdout; `tree`, `project_report`, `todo_scan`, `db_stats`, `daily_note` all run green.
+
 ## Users
 
 One person (the owner) on this Windows machine, browser on the same machine. No accounts, no remote

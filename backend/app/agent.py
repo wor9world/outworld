@@ -89,7 +89,7 @@ SCHEMAS: dict[str, dict[str, Any]] = {
 
 
 def tool_catalogue() -> list[dict[str, Any]]:
-    return [
+    catalogue = [
         {
             "type": "function",
             "function": {
@@ -100,6 +100,26 @@ def tool_catalogue() -> list[dict[str, Any]]:
         }
         for name, description in sorted(registry.public_tools().items())
     ]
+
+    from tools import script as script_tools
+
+    for entry in script_tools.catalogue():
+        params = [str(param) for param in entry["params"]]
+        catalogue.append(
+            {
+                "type": "function",
+                "function": {
+                    "name": f"script__{entry['name']}",
+                    "description": entry["description"] or f"Run the {entry['name']} script",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {param: {"type": "string"} for param in params},
+                        "required": params,
+                    },
+                },
+            }
+        )
+    return catalogue
 
 
 def system_prompt(conn: sqlite3.Connection, project_id: str | None, hints: str = "") -> str:
@@ -144,6 +164,11 @@ def execute_tool(
     started = time.perf_counter()
 
     def invoke(**extra: Any) -> dict[str, Any]:
+        if tool.startswith("script__"):
+            script_name = tool.split("__", 1)[1]
+            return toolcall.invoke(
+                "script", {"op": "run", "name": script_name, "params_values": args}, **extra
+            )
         return toolcall.invoke(tool, args, **extra)
 
     result = invoke()

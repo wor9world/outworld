@@ -1,0 +1,6 @@
+{
+  "description": "หา TODO/FIXME/XXX/HACK ทั้ง workspace + ไฟล์ที่ไม่ได้แตะเกิน 30 วัน",
+  "language": "python",
+  "params": [],
+  "timeout_s": 60
+}

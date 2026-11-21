@@ -1,0 +1,6 @@
+{
+  "description": "ดวงแบบข้อความบรรทัดเดียว (Sun/Moon/Asc/BaZi) ผ่าน API ของ Outworld",
+  "language": "python",
+  "params": ["birth_date"],
+  "timeout_s": 60
+}

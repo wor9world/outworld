@@ -92,8 +92,8 @@ def test_unmatched_message(client) -> None:
 
 def test_rules_endpoint(client) -> None:
     body = client.get("/api/pipe/rules").json()
-    assert body["counts"]["intents"] == 9
-    assert body["counts"]["plans"] == 9
+    assert body["counts"]["intents"] == 10
+    assert body["counts"]["plans"] == 10
     assert {row["intent"] for row in body["plans"]} == {
         "math_calc",
         "math_solve",
@@ -102,6 +102,7 @@ def test_rules_endpoint(client) -> None:
         "project_create",
         "project_verify",
         "news",
+        "script_run",
         "note_search",
         "search",
     }
@@ -109,7 +110,7 @@ def test_rules_endpoint(client) -> None:
 
 def test_reload(client) -> None:
     body = client.post("/api/pipe/reload").json()
-    assert body == {"intents": 9, "plans": 9}
+    assert body == {"intents": 10, "plans": 10}
 
 
 def test_dispatch_is_audited(client) -> None:

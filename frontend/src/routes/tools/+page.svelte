@@ -1,6 +1,7 @@
 <script lang="ts">
 	import ApprovalModal from '#lib/components/ApprovalModal.svelte';
 	import JsonBench from '#lib/components/JsonBench.svelte';
+	import ScriptPanel from '#lib/components/ScriptPanel.svelte';
 	import { get, post } from '#lib/api.ts';
 	import type { ApprovalRequest, Tool } from '#lib/types.ts';
 
@@ -63,6 +64,7 @@
 		<div class="mt-4">
 			<JsonBench {tools} onrun={run} />
 		</div>
+		<ScriptPanel onresult={(value) => (result = value)} />
 	</section>
 
 	<section>

@@ -12,6 +12,14 @@ backend เป็น Python (FastAPI + SQLite) frontend เป็น SvelteKit �
 | Bun | 1.4+ |
 | MSVC | 14.4x — ต้องมีเฉพาะครั้งแรก เพื่อ compile `pysweph` |
 
+## One command
+
+```bat
+scripts\dev.cmd      :: เปิด backend + frontend พร้อมกัน (Ctrl+C ปิดทั้งคู่)
+scripts\verify.cmd   :: lint + tests + types + build + independence check
+scripts\stop.cmd     :: ปิดอะไรก็ตามที่ listen อยู่บน 8000 หรือ 5173
+```
+
 ## Run (two processes)
 
 ```sh

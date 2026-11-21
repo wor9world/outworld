@@ -1,0 +1,6 @@
+{
+  "description": "สร้างโน้ตของวันนี้ที่ notes/YYYY-MM-DD.md พร้อม template (ถ้ามีอยู่แล้วจะไม่ทับ)",
+  "language": "python",
+  "params": [],
+  "timeout_s": 15
+}

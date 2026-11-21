@@ -21,6 +21,7 @@ from .api.tools import audit
 
 TRIGGERS = re.compile(
     r"(?i)^\s*(ช่วยวางแผน|วางแผน|plan|ค้นโน้ต|โน้ต|note|ค้นหา|หา|search|find|"
+    r"รันสคริปต์|รันสคริป|run script|script|"
     r"สร้างโปรเจ[คก](?:ต์)?|new project|scaffold|"
     r"ตรวจโปรเจ[คก](?:ต์)?|verify project|test project)\s*"
 )

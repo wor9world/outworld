@@ -1,0 +1,6 @@
+{
+  "description": "สถิติระบบ: จำนวนแถวแต่ละตาราง, runs ล่าสุด, pattern ที่สำเร็จสูงสุด",
+  "language": "python",
+  "params": [],
+  "timeout_s": 20
+}

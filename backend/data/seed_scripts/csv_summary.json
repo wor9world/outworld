@@ -1,0 +1,6 @@
+{
+  "description": "สรุปไฟล์ CSV: จำนวนแถว/คอลัมน์, ช่องว่าง, ช่วงค่าของคอลัมน์ตัวเลข",
+  "language": "python",
+  "params": ["file"],
+  "timeout_s": 30
+}

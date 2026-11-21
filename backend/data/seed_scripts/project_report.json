@@ -1,0 +1,6 @@
+{
+  "description": "สรุปโปรเจกต์: จำนวนไฟล์/บรรทัด, TODO/FIXME, git status",
+  "language": "python",
+  "params": [],
+  "timeout_s": 60
+}

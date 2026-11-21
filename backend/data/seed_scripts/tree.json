@@ -1,0 +1,6 @@
+{
+  "description": "แสดงโครงสร้างโฟลเดอร์พร้อมขนาดไฟล์ (ข้าม node_modules/.venv/.git)",
+  "language": "python",
+  "params": [],
+  "timeout_s": 30
+}

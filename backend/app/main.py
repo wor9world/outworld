@@ -45,6 +45,7 @@ TOOL_MODULES = (
     "memory",
     "planner",
     "project",
+    "script",
     "search",
     "shell",
     "z3",

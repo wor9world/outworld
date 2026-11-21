@@ -577,10 +577,11 @@ Rules:
 
 ---
 
-## 7. Tool contract — 11 tools
+## 7. Tool contract — 12 tools
 
 Envelope: `{"ok":bool,"data":any,"meta":{…},"error":string|null}`. Ids exactly:
-`fs`, `shell`, `code`, `search`, `astro`, `calc`, `z3`, `knowledge`, `memory`, `project`, `planner`.
+`fs`, `shell`, `code`, `search`, `astro`, `calc`, `z3`, `knowledge`, `memory`, `project`, `script`,
+`planner`.
 
 | Tool | Input | `data` on success |
 |---|---|---|
@@ -594,6 +595,7 @@ Envelope: `{"ok":bool,"data":any,"meta":{…},"error":string|null}`. Ids exactly
 | `knowledge` | `{op:"create"\|"search"\|"get", …}` | note or hits |
 | `memory` | `{op:"search"\|"save"\|"forget", q?, name?, intent?, tool_chain?}` | patterns / `{id}` |
 | `project` | `{op:"scaffold"\|"verify", name, template?, path?}` | `{path, files[]}` · `{checks[],ok}` |
+| `script` | `{op:"list"\|"read"\|"write"\|"delete"\|"run"\|"seed", name?, source?, params?, params_values?}` | `{scripts[]}` · `{source,manifest}` · `{stdout,stderr,exit_code}` |
 | `planner` | `{goal, project_id?}` | `{steps:[{title,tool,args}], assumptions[]}` |
 
 ### 7.1 `fs`
@@ -684,7 +686,18 @@ Same store and SQL as §5.5. `create` → note; `search` → FTS5 hits; `get` �
 - With a provider available the agent may enrich step titles; the skeleton is always the floor.
 - Never executes steps. The pipe executes them.
 
-### 7.12 Audit
+### 7.12 `script` — user scripts as first-class tools
+- Storage: `workspace/scripts/<name>.py|.js` plus `<name>.json` manifest
+  `{description, language, params[], timeout_s}`. Name `^[a-z0-9_-]{1,40}$`; params `^[A-Za-z0-9_]{1,24}$`.
+- Ops: `list`, `read`, `write`, `delete`, `run`, `seed`.
+- `run` resolves params in manifest order, passes them as argv after an absolute script path, cwd is
+  the workspace, timeout from the manifest, output capped at `max_output_bytes`.
+- **Agent exposure:** every script appears in the tool catalogue as `script__<name>` with one string
+  property per declared param; a call is dispatched to `script(op="run", params_values=args)`.
+- **Seed set** (`backend/data/seed_scripts/`, installed by `op:"seed"`, never overwrites): `tree`,
+  `project_report`, `todo_scan`, `db_stats`, `daily_note`, `csv_summary`, `astro_text`. All stdlib.
+
+### 7.13 Audit
 Every dispatch inserts one `tool_calls` row before the response leaves the process — including
 `denied`, `timeout`, and approval-executed calls. (A17)
 
@@ -746,7 +759,7 @@ SSR of data, skeleton on first paint, one data path in dev and prod.
 
 `base = import.meta.env.VITE_API_BASE ?? 'http://127.0.0.1:8000'`.
 
-### 9.3 Components — 16
+### 9.3 Components — 17
 
 | # | File | Props |
 |---|---|---|
@@ -766,6 +779,7 @@ SSR of data, skeleton on first paint, one data path in dev and prod.
 | 14 | `PatternCard.svelte` | `pattern`, `onpromote`, `ontoggle`, `ondelete` |
 | 15 | `StatsBar.svelte` | `stats:{runs_total,ok_rate,patterns_total,recalls_24h}` |
 | 16 | `RouteChip.svelte` | `route:{intent,rule_id,source,confidence}`, `onopen()` |
+| 17 | `ScriptPanel.svelte` | `onresult(result)` — list, install seeds, run with param prompts |
 
 Commands have no separate component: `/projects/[id]` renders them as `ListPane` rows with an inline
 form.
@@ -860,6 +874,10 @@ Leaving `/chat/[id]` aborts the stream through the `$effect` cleanup controller.
 | A37 | §14.2 — `17/08/2538 14:30 กรุงเทพ` resolves to 1995-08-17; `2026-12-01` alone is not routed and is never evaluated as subtraction |
 | A38 | §14.2 — `ค้นโน้ต …` routes to `note_search` with `scope: knowledge`, while `ค้นหา …` keeps going to the web |
 | A39 | §9.5 — a project and a chat can be deleted from the UI, and a command with parameters prompts for them |
+| A40 | §7.12 — `script` is a tool: write/list/read/delete/run, manifest with params, timeout enforced |
+| A41 | §7.12 — every script appears in the agent catalogue as `script__<name>` and a call runs it |
+| A42 | §7.12 — `op:"seed"` installs the 7 starter scripts once and never overwrites an edited one |
+| A43 | §14.2 — `รันสคริปต์ tree` routes to `script_run` and returns the script's stdout |
 
 ---
 
@@ -1033,15 +1051,36 @@ rules:
     slots:
       query: { from: message, transform: keep }
 
+  - id: script_run
+    intent: script_run
+    priority: 75
+    when:
+      any:
+        - regex: '(?i)^\s*(รันสคริปต์|รันสคริป|run script|script)\s+'
+    slots:
+      name: { from: message, transform: extract_name }
+
+  - id: note_search
+    intent: note_search
+    priority: 70
+    when:
+      any:
+        - regex: '(?i)^\s*(ค้นโน้ต|โน้ต|note)\s+'
+    slots:
+      query: { from: message, transform: strip_prefix }
+
   - id: search
     intent: search
     priority: 60
     when:
       any:
-        - regex: '(?i)^\s*(ค้นหา|หา|search|find)\b'
+        - regex: '(?i)^\s*(ค้นหา|หา|search|find)(\s|$)'
     slots:
       query: { from: message, transform: strip_prefix }
 ```
+
+`data/intent.yaml` and `data/plan_cheat.yaml` are the normative files; this listing is a copy kept for
+review, and `GET /api/pipe/rules` returns the loaded truth.
 
 **Rule schema (closed set).** `id`, `intent`, `priority` (int), `when.all[]`, `when.any[]`,
 `slots{}`. A condition is exactly one of `regex`, `not_regex`, `contains`, `startswith`, `equals`.
@@ -1099,6 +1138,12 @@ plans:
       - tool: search
         args: { scope: knowledge, q: "{{query}}", limit: 8 }
     answer: "{{hits}}"
+
+  script_run:
+    steps:
+      - tool: script
+        args: { op: run, name: "{{name}}" }
+    answer: "{{stdout}}{{stderr}}"
 
   plan:
     steps:
