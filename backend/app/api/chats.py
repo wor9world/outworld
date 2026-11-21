@@ -7,7 +7,7 @@ import sqlite3
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from .. import db
+from .. import db, runner
 from .projects import valid_id
 
 router = APIRouter()
@@ -19,6 +19,10 @@ class ChatIn(BaseModel):
 
 class ChatPatch(BaseModel):
     title: str = Field(min_length=1, max_length=120)
+
+
+class MessageIn(BaseModel):
+    content: str = Field(min_length=1, max_length=20000)
 
 
 def fetch_chat(conn: sqlite3.Connection, chat_id: str) -> sqlite3.Row:
@@ -131,3 +135,12 @@ def delete_chat(chat_id: str, conn: sqlite3.Connection = Depends(db.get_db)):
     conn.execute("DELETE FROM chats WHERE id = ?", (chat_id,))
     conn.commit()
     return None
+
+
+@router.post("/chat/{chat_id}", status_code=201)
+def post_message(
+    chat_id: str, body: MessageIn, conn: sqlite3.Connection = Depends(db.get_db)
+) -> dict:
+    """One turn. No provider configured is a supported outcome, not an error."""
+    fetch_chat(conn, chat_id)
+    return runner.run_chat(conn, chat_id, body.content)
