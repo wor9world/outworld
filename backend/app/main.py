@@ -17,7 +17,7 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import config, db
-from .api import chats, health, projects
+from .api import chats, health, knowledge, projects
 
 TOOL_MODULES = (
     "astro",
@@ -77,6 +77,7 @@ def create_app() -> FastAPI:
     app.include_router(health.router, prefix="/api")
     app.include_router(projects.router, prefix="/api")
     app.include_router(chats.router, prefix="/api")
+    app.include_router(knowledge.router, prefix="/api")
     return app
 
 

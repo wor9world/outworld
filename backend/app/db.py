@@ -55,7 +55,7 @@ CREATE INDEX IF NOT EXISTS knowledge_project ON knowledge(project_id);
 CREATE VIRTUAL TABLE IF NOT EXISTS knowledge_fts USING fts5(
     title, body, tags,
     content='knowledge', content_rowid='rowid',
-    tokenize='unicode61 remove_diacritics 2'
+    tokenize='trigram'
 );
 
 CREATE TRIGGER IF NOT EXISTS knowledge_ai AFTER INSERT ON knowledge BEGIN
@@ -157,7 +157,7 @@ CREATE TABLE IF NOT EXISTS patterns (
 CREATE VIRTUAL TABLE IF NOT EXISTS pattern_fts USING fts5(
     name, intent,
     content='patterns', content_rowid='rowid',
-    tokenize='unicode61 remove_diacritics 2'
+    tokenize='trigram'
 );
 
 CREATE TRIGGER IF NOT EXISTS pattern_ai AFTER INSERT ON patterns BEGIN
