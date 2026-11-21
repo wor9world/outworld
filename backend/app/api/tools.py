@@ -10,7 +10,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 
-from .. import config, db
+from .. import config, db, sandbox
 from tools import registry
 
 router = APIRouter()
@@ -125,6 +125,12 @@ async def run_tool(
     elapsed = int((time.perf_counter() - started) * 1000)
 
     ok = bool(result.get("ok"))
+    if not ok and result.get("error") == "approval_required":
+        token = sandbox.mint(conn, tool, body)
+        result["approval_token"] = token
+        result["message"] = "approval_required"
+        result.setdefault("meta", {})["approval_token"] = token
+
     status = "ok" if ok else "error"
     if not ok and result.get("error") == "timeout":
         status = "timeout"
