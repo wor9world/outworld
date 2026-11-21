@@ -39,6 +39,34 @@ def client() -> Iterator[object]:
         yield test_client
 
 
+@pytest.fixture(autouse=True)
+def _clean_db(client) -> Iterator[None]:
+    """Every test starts from an empty database (triggers keep FTS in sync)."""
+    yield
+    from app import db
+
+    conn = db.connect()
+    try:
+        for table in (
+            "feedback",
+            "patterns",
+            "runs",
+            "approvals",
+            "tool_calls",
+            "commands",
+            "providers",
+            "knowledge",
+            "messages",
+            "chats",
+            "projects",
+        ):
+            conn.execute(f"DELETE FROM {table}")  # noqa: S608 - fixed table list
+        conn.execute("DELETE FROM sqlite_sequence")
+        conn.commit()
+    finally:
+        conn.close()
+
+
 @pytest.fixture()
 def workspace(root: Path) -> Path:
     path = root / "workspace"

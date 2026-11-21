@@ -11,11 +11,13 @@ import sys
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import config, db
-from .api import health
+from .api import chats, health, projects
 
 TOOL_MODULES = (
     "astro",
@@ -66,7 +68,15 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
         allow_credentials=False,
     )
+
+    @app.exception_handler(StarletteHTTPException)
+    async def http_error(_: Request, exc: StarletteHTTPException) -> JSONResponse:
+        """Every error leaves the process as {"message": "..."} (SPEC §5)."""
+        return JSONResponse({"message": str(exc.detail)}, status_code=exc.status_code)
+
     app.include_router(health.router, prefix="/api")
+    app.include_router(projects.router, prefix="/api")
+    app.include_router(chats.router, prefix="/api")
     return app
 
 

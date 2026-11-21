@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import sqlite3
+import uuid
 from collections.abc import Iterator
+from datetime import UTC, datetime
+from typing import Any
 
 from . import config
 
@@ -208,3 +211,21 @@ def get_db() -> Iterator[sqlite3.Connection]:
         yield conn
     finally:
         conn.close()
+
+
+def new_id() -> str:
+    return uuid.uuid4().hex
+
+
+def now_iso() -> str:
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.") + (
+        f"{datetime.now(UTC).microsecond // 1000:03d}Z"
+    )
+
+
+def to_dict(row: sqlite3.Row | None) -> dict[str, Any] | None:
+    return dict(row) if row is not None else None
+
+
+def to_dicts(rows: list[sqlite3.Row]) -> list[dict[str, Any]]:
+    return [dict(row) for row in rows]
