@@ -94,4 +94,5 @@ def test_module_main_prints_json(client) -> None:
     assert result.returncode == 0
     assert "Traceback" not in result.stderr
     payload = json.loads(result.stdout)
-    assert "ok" in payload and "data" in payload
+    assert "ok" in payload
+    assert "data" in payload

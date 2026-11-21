@@ -10,6 +10,7 @@ Two measured facts drive this module:
 
 from __future__ import annotations
 
+import itertools
 from typing import Any
 
 import sympy as sp
@@ -37,7 +38,7 @@ NAMESPACE: dict[str, Any] = {
     "Rational": sp.Rational,
 }
 
-TRANSFORMS = standard_transformations + (rationalize,)
+TRANSFORMS = (*standard_transformations, rationalize)
 MAX_GRID = 40.0
 STEP = 0.1
 TOL = 1e-6
@@ -67,14 +68,14 @@ def _grid_roots(f: Any, var: sp.Symbol) -> list[float]:
 
     try:
         numeric = sp.lambdify(var, f, modules=["math"])
-    except Exception:  # noqa: BLE001 - a non-lambdifiable expression simply has no scan
+    except Exception:
         return []
     points: list[tuple[float, float]] = []
     value = STEP
     while value <= MAX_GRID:
         try:
             result = float(numeric(value))
-        except Exception:  # noqa: BLE001 - domain errors are expected mid-scan
+        except Exception:
             value += STEP
             continue
         if math.isfinite(result):
@@ -82,7 +83,7 @@ def _grid_roots(f: Any, var: sp.Symbol) -> list[float]:
         value += STEP
 
     roots: list[float] = []
-    for (x0, y0), (x1, y1) in zip(points, points[1:]):
+    for (x0, y0), (x1, y1) in itertools.pairwise(points):
         if y0 == 0:
             roots.append(x0)
             continue
@@ -92,7 +93,7 @@ def _grid_roots(f: Any, var: sp.Symbol) -> list[float]:
                 number = _num(root)
                 if number is not None:
                     roots.append(number)
-            except Exception:  # noqa: BLE001 - skip brackets nsolve cannot refine
+            except Exception:
                 continue
     return roots
 
@@ -129,7 +130,7 @@ def solve_equation(expr: str, var_name: str = "x") -> dict[str, Any]:
     exact_roots: list[Any] = []
     try:
         exact_roots = list(sp.solve(equation, var))
-    except Exception:  # noqa: BLE001 - solve is best-effort; the scan is the fallback
+    except Exception:
         exact_roots = []
 
     real: list[float] = []
@@ -162,6 +163,6 @@ def run(op: str = "eval", expr: str = "", var: str = "x") -> dict[str, Any]:
             data = solve_equation(expr, var or "x")
         else:
             return {"ok": False, "data": None, "meta": {}, "error": f"unknown_op:{op}"}
-    except Exception as exc:  # noqa: BLE001 - sympy raises many shapes; none may escape
+    except Exception as exc:
         return {"ok": False, "data": None, "meta": {"op": op}, "error": f"{type(exc).__name__}: {exc}"}
     return {"ok": True, "data": data, "meta": {"op": op}, "error": None}

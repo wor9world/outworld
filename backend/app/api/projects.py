@@ -121,7 +121,7 @@ def update_project(
     data["updated_at"] = db.now_iso()
     columns = ", ".join(f"{key} = ?" for key in data)
     conn.execute(
-        f"UPDATE projects SET {columns} WHERE id = ?",  # noqa: S608 - keys are pydantic fields
+        f"UPDATE projects SET {columns} WHERE id = ?",
         (*data.values(), project_id),
     )
     conn.commit()
@@ -135,4 +135,4 @@ def delete_project(project_id: str, conn: sqlite3.Connection = Depends(db.get_db
     conn.commit()
     if cursor.rowcount == 0:
         raise HTTPException(404, "project not found")
-    return None
+    return

@@ -60,3 +60,19 @@ def test_settings_survive_corruption(client) -> None:
     path.write_text("{not json", encoding="utf-8")
     settings = config.load_settings()
     assert settings["code_timeout_s"] == 20
+
+
+def test_backup_is_a_sqlite_file(client) -> None:
+    r = client.get("/api/backup")
+    assert r.status_code == 200
+    assert r.headers["content-type"] == "application/octet-stream"
+    assert r.content.startswith(b"SQLite format 3")
+
+
+def test_openapi_reports_the_whole_surface(client) -> None:
+    from app.main import app
+
+    operations = sum(
+        1 for item in app.openapi()["paths"].values() for _ in item
+    )
+    assert operations == 47

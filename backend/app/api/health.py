@@ -6,8 +6,9 @@ import platform
 
 from fastapi import APIRouter
 
-from .. import config, db
 from tools import registry
+
+from .. import config, db
 
 router = APIRouter()
 

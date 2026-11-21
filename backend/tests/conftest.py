@@ -15,21 +15,21 @@ if str(BACKEND) not in sys.path:
 
 
 @pytest.fixture(scope="session", autouse=True)
-def _env(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Path]:
+def _env(tmp_path_factory: pytest.TempPathFactory) -> Path:
     root = tmp_path_factory.mktemp("outworld")
     os.environ["OUTWORLD_DATA"] = str(root / "data")
     os.environ["OUTWORLD_DB"] = str(root / "data" / "outworld.db")
     os.environ["OUTWORLD_WORKSPACE"] = str(root / "workspace")
     os.environ["OUTWORLD_EPHE"] = str(BACKEND / "data" / "assets")
-    yield root
+    return root
 
 
-@pytest.fixture()
+@pytest.fixture
 def root(_env: Path) -> Path:
     return _env
 
 
-@pytest.fixture()
+@pytest.fixture
 def client() -> Iterator[object]:
     from fastapi.testclient import TestClient
 
@@ -74,7 +74,7 @@ def _clean_db(client, _env) -> Iterator[None]:
     workspace.mkdir(parents=True, exist_ok=True)
 
 
-@pytest.fixture()
+@pytest.fixture
 def workspace(root: Path) -> Path:
     path = root / "workspace"
     path.mkdir(parents=True, exist_ok=True)

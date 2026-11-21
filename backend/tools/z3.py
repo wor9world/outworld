@@ -20,7 +20,7 @@ def run(smt2: str) -> dict[str, Any]:
         result = solver.check()
     except z3.Z3Exception as exc:
         return {"ok": False, "data": None, "meta": {}, "error": f"z3_error: {exc}"}
-    except Exception as exc:  # noqa: BLE001 - parser errors surface in several types
+    except Exception as exc:
         return {"ok": False, "data": None, "meta": {}, "error": f"{type(exc).__name__}: {exc}"}
 
     data: dict[str, Any] = {"status": str(result)}

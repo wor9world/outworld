@@ -4,15 +4,19 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import tempfile
 import time
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
+from starlette.background import BackgroundTask
 
-from .. import db, sandbox
 from tools import registry
 
+from .. import db, sandbox
 from .tools import audit
 
 router = APIRouter()
@@ -74,3 +78,22 @@ def decide(
         elapsed,
     )
     return {"status": status, "call_id": call_id, "result": result}
+
+
+@router.get("/backup")
+def backup(conn: sqlite3.Connection = Depends(db.get_db)) -> FileResponse:
+    """Consistent snapshot through the SQLite backup API (safe while WAL is active)."""
+    stamp = time.strftime("%Y%m%d-%H%M")
+    tmp_dir = Path(tempfile.mkdtemp(prefix="outworld-backup-"))
+    target = tmp_dir / f"outworld-{stamp}.db"
+    destination = sqlite3.connect(target)
+    try:
+        conn.backup(destination)
+    finally:
+        destination.close()
+    return FileResponse(
+        target,
+        media_type="application/octet-stream",
+        filename=target.name,
+        background=BackgroundTask(lambda: __import__("shutil").rmtree(tmp_dir, ignore_errors=True)),
+    )

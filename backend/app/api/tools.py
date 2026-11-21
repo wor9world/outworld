@@ -10,8 +10,9 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 
-from .. import config, db, locations, sandbox
 from tools import registry
+
+from .. import config, db, locations, sandbox
 
 router = APIRouter()
 

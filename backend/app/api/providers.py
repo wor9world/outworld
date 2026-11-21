@@ -79,7 +79,7 @@ def create_provider(
 def patch_provider(
     provider_id: str, body: ProviderPatch, conn: sqlite3.Connection = Depends(db.get_db)
 ) -> dict:
-    row = _get(conn, provider_id)
+    _get(conn, provider_id)
     data = body.model_dump(exclude_none=True)
     if "api_key" in data and data["api_key"] == "":
         data.pop("api_key")  # empty key keeps the stored one
@@ -88,7 +88,7 @@ def patch_provider(
     if data:
         columns = ", ".join(f"{key} = ?" for key in data)
         conn.execute(
-            f"UPDATE providers SET {columns} WHERE id = ?",  # noqa: S608 - fixed keys
+            f"UPDATE providers SET {columns} WHERE id = ?",
             (*data.values(), provider_id),
         )
         conn.commit()
@@ -100,9 +100,9 @@ def delete_provider(provider_id: str, conn: sqlite3.Connection = Depends(db.get_
     _get(conn, provider_id)
     conn.execute("DELETE FROM providers WHERE id = ?", (provider_id,))
     conn.commit()
-    return None
+    return
 
 
 @router.post("/providers/{provider_id}/test")
-def test_provider(provider_id: str, conn: sqlite3.Connection = Depends(db.get_db)) -> dict:
+def probe_provider(provider_id: str, conn: sqlite3.Connection = Depends(db.get_db)) -> dict:
     return llm.probe(dict(_get(conn, provider_id)))

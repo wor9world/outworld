@@ -12,9 +12,10 @@ import time
 from collections.abc import Iterator
 from typing import Any
 
+from tools import registry
+
 from . import config, llm, sandbox
 from .api.tools import audit
-from tools import registry
 
 Event = tuple[str, dict[str, Any]]
 
@@ -251,8 +252,7 @@ def run(
                 continue
 
             outcome, events = execute_tool(conn, name, args, run_id)
-            for event in events:
-                yield event
+            yield from events
             messages.append(
                 {
                     "role": "tool",

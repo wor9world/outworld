@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import importlib
 import sys
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import AsyncIterator
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,11 +20,19 @@ from . import config, db
 from .api import (
     calls,
     chats,
+    commands,
     health,
     knowledge,
-    pipe as pipe_api,
     projects,
     providers,
+)
+from .api import (
+    learning as learning_api,
+)
+from .api import (
+    pipe as pipe_api,
+)
+from .api import (
     tools as tools_api,
 )
 
@@ -91,6 +99,8 @@ def create_app() -> FastAPI:
     app.include_router(calls.router, prefix="/api")
     app.include_router(pipe_api.router, prefix="/api")
     app.include_router(providers.router, prefix="/api")
+    app.include_router(learning_api.router, prefix="/api")
+    app.include_router(commands.router, prefix="/api")
     return app
 
 

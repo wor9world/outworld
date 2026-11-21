@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
 from app import llm
 
 
@@ -183,4 +181,4 @@ def test_agent_loop_executes_one_tool(client, monkeypatch) -> None:
 
     tool_event = next(data for name, data in events if name == "tool")
     assert tool_event["tool"] == "calc"
-    assert any("the answer is 4" == data.get("text") for name, data in events if name == "delta")
+    assert any(data.get("text") == "the answer is 4" for name, data in events if name == "delta")

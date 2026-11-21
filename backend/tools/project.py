@@ -130,7 +130,7 @@ def run(op: str, name: str = "", template: str = "python", path: str | None = No
 
 def _run_pytest(target) -> dict[str, Any]:
     try:
-        completed = subprocess.run(  # noqa: S603 - fixed argv
+        completed = subprocess.run(
             [sys.executable, "-m", "pytest", "-q", "--no-header", "-p", "no:cacheprovider"],
             cwd=str(target),
             capture_output=True,

@@ -6,7 +6,7 @@ import json
 import sqlite3
 from typing import Any
 
-from . import agent, db, llm, pipe
+from . import agent, db, learning, llm, pipe
 
 MAX_INTENT = 200
 TITLE_CHARS = 48
@@ -117,6 +117,17 @@ def decide(message: str) -> dict[str, Any]:
     return {"matched": matched, "route": routed}
 
 
+def recall_hints(conn: sqlite3.Connection, message: str) -> tuple[str, list[str]]:
+    patterns = learning.recall(conn, message)
+    return learning.hints(patterns), [str(pattern["id"]) for pattern in patterns]
+
+
+def finish_run(conn: sqlite3.Connection, run_id: str, pattern_ids: list[str]) -> None:
+    """Distil a pattern from a successful run and count the ones that were injected."""
+    learning.record_use(conn, pattern_ids)
+    learning.distill(conn, run_id, set(pattern_ids))
+
+
 def run_chat(conn: sqlite3.Connection, chat_id: str, content: str) -> dict[str, Any]:
     """Synchronous turn: pipe when it matches, otherwise report why there is no answer."""
     chat = conn.execute("SELECT * FROM chats WHERE id = ?", (chat_id,)).fetchone()
@@ -133,6 +144,7 @@ def run_chat(conn: sqlite3.Connection, chat_id: str, content: str) -> dict[str, 
         matched_rule=route.get("rule_id") if routed["matched"] else None,
     )
     user_message = add_user_message(conn, chat_id, content)
+    hint_text, pattern_ids = recall_hints(conn, content)
 
     if routed["matched"]:
         outcome = pipe.run(conn, content, chat_id, run_id)
@@ -151,6 +163,7 @@ def run_chat(conn: sqlite3.Connection, chat_id: str, content: str) -> dict[str, 
             "ok" if not outcome.get("error") else "error",
             tool_count=len(outcome["results"]),
         )
+        finish_run(conn, run_id, pattern_ids)
         return {
             "run_id": run_id,
             "intent": outcome["intent"],
@@ -161,6 +174,7 @@ def run_chat(conn: sqlite3.Connection, chat_id: str, content: str) -> dict[str, 
 
     if not llm_enabled(conn):
         close_run(conn, run_id, "ok")
+        finish_run(conn, run_id, pattern_ids)
         return {
             "run_id": run_id,
             "intent": None,
@@ -170,7 +184,7 @@ def run_chat(conn: sqlite3.Connection, chat_id: str, content: str) -> dict[str, 
         }
 
     provider = enabled_providers(conn)[0]
-    stream = agent.run(conn, provider, chat_id, run_id, content, project_id, "")
+    stream = agent.run(conn, provider, chat_id, run_id, content, project_id, hint_text)
     text = ""
     try:
         while True:
@@ -182,6 +196,7 @@ def run_chat(conn: sqlite3.Connection, chat_id: str, content: str) -> dict[str, 
             "warnings": []}
     assistant = add_assistant_message(conn, chat_id, text, meta)
     close_run(conn, run_id, "ok", iterations=1)
+    finish_run(conn, run_id, pattern_ids)
     return {
         "run_id": run_id,
         "intent": None,

@@ -136,7 +136,7 @@ def delete_chat(chat_id: str, conn: sqlite3.Connection = Depends(db.get_db)):
     fetch_chat(conn, chat_id)
     conn.execute("DELETE FROM chats WHERE id = ?", (chat_id,))
     conn.commit()
-    return None
+    return
 
 
 @router.post("/chat/{chat_id}", status_code=201)
@@ -177,6 +177,7 @@ async def stream_chat(chat_id: str, body: MessageIn) -> StreamingResponse:
         matched_rule=route.get("rule_id") if routed["matched"] else None,
     )
     runner.add_user_message(conn, chat_id, body.content)
+    hint_text, pattern_ids = runner.recall_hints(conn, body.content)
 
     async def events():
         try:
@@ -208,12 +209,13 @@ async def stream_chat(chat_id: str, body: MessageIn) -> StreamingResponse:
                     "ok" if not outcome.get("error") else "error",
                     tool_count=len(outcome["results"]),
                 )
+                runner.finish_run(conn, run_id, pattern_ids)
                 yield _sse("done", {"message_id": message["id"]})
                 return
 
             provider = providers[0]
             stream = agent.run(
-                conn, provider, chat_id, run_id, body.content, chat["project_id"], ""
+                conn, provider, chat_id, run_id, body.content, chat["project_id"], hint_text
             )
             text = ""
             try:
@@ -231,8 +233,9 @@ async def stream_chat(chat_id: str, body: MessageIn) -> StreamingResponse:
             }
             message = runner.add_assistant_message(conn, chat_id, text, meta)
             runner.close_run(conn, run_id, "ok", iterations=1)
+            runner.finish_run(conn, run_id, pattern_ids)
             yield _sse("done", {"message_id": message["id"]})
-        except Exception as exc:  # noqa: BLE001 - the client must always get an event
+        except Exception as exc:
             runner.close_run(conn, run_id, "error")
             yield _sse("error", {"message": str(exc)})
         finally:

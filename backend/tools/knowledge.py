@@ -118,7 +118,7 @@ def update(
     data["updated_at"] = db.now_iso()
     columns = ", ".join(f"{key} = ?" for key in data)
     conn.execute(
-        f"UPDATE knowledge SET {columns} WHERE id = ?",  # noqa: S608 - fixed keys
+        f"UPDATE knowledge SET {columns} WHERE id = ?",
         (*data.values(), note_id),
     )
     conn.commit()

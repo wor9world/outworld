@@ -14,9 +14,10 @@ from typing import Any
 
 import yaml
 
+from tools import registry
+
 from . import config
 from .api.tools import audit
-from tools import registry
 
 TRIGGERS = re.compile(
     r"(?i)^\s*(ช่วยวางแผน|วางแผน|plan|ค้นหา|หา|search|find|"
@@ -143,7 +144,7 @@ def plans() -> dict[str, Plan]:
     if _plans is None:
         try:
             reload()
-        except Exception:  # noqa: BLE001 - surfaced through /pipe/rules
+        except Exception:
             return {}
     return _plans or {}
 

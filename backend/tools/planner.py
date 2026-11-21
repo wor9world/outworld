@@ -20,7 +20,7 @@ def run(goal: str = "") -> dict[str, Any]:
             "args": {"op": "search", "q": text, "limit": 5},
         },
         {
-            "title": "กำหนดผลลัพธ์ที่วัดได้ 1–3 ข้อ",
+            "title": "กำหนดผลลัพธ์ที่วัดได้ 1-3 ข้อ",
             "tool": None,
             "args": {},
         },

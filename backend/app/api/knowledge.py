@@ -7,8 +7,9 @@ import sqlite3
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from .. import db
 from tools import knowledge as store
+
+from .. import db
 
 router = APIRouter()
 
@@ -64,4 +65,4 @@ def patch_note(
 def delete_note(note_id: str, conn: sqlite3.Connection = Depends(db.get_db)):
     if not store.delete(conn, note_id):
         raise HTTPException(404, "note not found")
-    return None
+    return
