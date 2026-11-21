@@ -24,6 +24,7 @@ from .api import (
     knowledge,
     pipe as pipe_api,
     projects,
+    providers,
     tools as tools_api,
 )
 
@@ -89,6 +90,7 @@ def create_app() -> FastAPI:
     app.include_router(tools_api.router, prefix="/api")
     app.include_router(calls.router, prefix="/api")
     app.include_router(pipe_api.router, prefix="/api")
+    app.include_router(providers.router, prefix="/api")
     return app
 
 

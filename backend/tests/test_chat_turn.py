@@ -15,7 +15,7 @@ def test_turn_without_provider(client) -> None:
     r = client.post(f"/api/chat/{chat_id}", json={"content": "hello world"})
     assert r.status_code == 201, r.text
     body = r.json()
-    assert body["warnings"] == ["llm_disabled"]
+    assert body["warnings"] == ["no_route"]
     assert body["assistant_message"] is None
     assert body["user_message"]["role"] == "user"
     assert isinstance(body["user_message"]["id"], int)

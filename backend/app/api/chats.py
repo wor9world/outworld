@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from .. import db, runner
+from .. import agent, db, pipe, runner
 from .projects import valid_id
 
 router = APIRouter()
@@ -144,3 +146,100 @@ def post_message(
     """One turn. No provider configured is a supported outcome, not an error."""
     fetch_chat(conn, chat_id)
     return runner.run_chat(conn, chat_id, body.content)
+
+
+def _sse(event: str, data: dict) -> str:
+    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+
+@router.post("/chat/{chat_id}/stream")
+async def stream_chat(chat_id: str, body: MessageIn) -> StreamingResponse:
+    """SSE turn: pipe when it matches, otherwise the agent (SPEC §6)."""
+    conn = db.connect()
+    chat = conn.execute("SELECT * FROM chats WHERE id = ?", (chat_id,)).fetchone()
+    if chat is None:
+        conn.close()
+        raise HTTPException(404, "chat not found")
+
+    routed = runner.decide(body.content)
+    providers = runner.enabled_providers(conn)
+    if not routed["matched"] and not providers:
+        conn.close()
+        raise HTTPException(409, "llm_disabled")
+
+    route = routed["route"]
+    run_id = runner.open_run(
+        conn,
+        chat_id,
+        chat["project_id"],
+        body.content,
+        intent_source="pipe" if routed["matched"] else "llm",
+        matched_rule=route.get("rule_id") if routed["matched"] else None,
+    )
+    runner.add_user_message(conn, chat_id, body.content)
+
+    async def events():
+        try:
+            yield _sse("start", {"run_id": run_id})
+            yield _sse(
+                "route",
+                {
+                    "intent": route.get("intent"),
+                    "rule_id": route.get("rule_id"),
+                    "source": "pipe" if routed["matched"] else "llm",
+                },
+            )
+
+            if routed["matched"]:
+                outcome = pipe.run(conn, body.content, chat_id, run_id)
+                text = outcome.get("answer") or json.dumps(
+                    [step["result"] for step in outcome["results"]], ensure_ascii=False
+                )[:2000]
+                yield _sse("delta", {"text": text})
+                meta = {
+                    "intent": outcome["intent"],
+                    "tool_call_ids": [step["call_id"] for step in outcome["results"]],
+                    "warnings": [],
+                }
+                message = runner.add_assistant_message(conn, chat_id, text, meta)
+                runner.close_run(
+                    conn,
+                    run_id,
+                    "ok" if not outcome.get("error") else "error",
+                    tool_count=len(outcome["results"]),
+                )
+                yield _sse("done", {"message_id": message["id"]})
+                return
+
+            provider = providers[0]
+            stream = agent.run(
+                conn, provider, chat_id, run_id, body.content, chat["project_id"], ""
+            )
+            text = ""
+            try:
+                while True:
+                    event, data = next(stream)
+                    yield _sse(event, data)
+            except StopIteration as stop:
+                text = stop.value or ""
+
+            meta = {
+                "intent": None,
+                "provider_id": provider["id"],
+                "model": provider["model"],
+                "warnings": [],
+            }
+            message = runner.add_assistant_message(conn, chat_id, text, meta)
+            runner.close_run(conn, run_id, "ok", iterations=1)
+            yield _sse("done", {"message_id": message["id"]})
+        except Exception as exc:  # noqa: BLE001 - the client must always get an event
+            runner.close_run(conn, run_id, "error")
+            yield _sse("error", {"message": str(exc)})
+        finally:
+            conn.close()
+
+    return StreamingResponse(
+        events(),
+        media_type="text/event-stream",
+        headers={"cache-control": "no-cache", "x-accel-buffering": "no"},
+    )

@@ -321,7 +321,7 @@ def run(
         except TypeError as exc:
             result = {"ok": False, "data": None, "meta": {}, "error": f"bad_args:{exc}"}
         elapsed = int((time.perf_counter() - started) * 1000)
-        audit(
+        call_id = audit(
             conn,
             tool_id,
             args,
@@ -331,7 +331,9 @@ def run(
             chat_id,
             run_id,
         )
-        results.append({"tool": tool_id, "args": args, "result": result, "ms": elapsed})
+        results.append(
+            {"tool": tool_id, "args": args, "result": result, "ms": elapsed, "call_id": call_id}
+        )
 
     ctx = _context(results)
     answer = render(plan.answer, ctx)
