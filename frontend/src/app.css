@@ -1,1 +1,5 @@
 @import "tailwindcss";
+
+/* Verified against the installed tailwindcss 4.3.5 (it ships @custom-variant).
+   The theme toggle writes `.dark` on <html>, and app.html does it before first paint. */
+@custom-variant dark (&:where(.dark, .dark *));
